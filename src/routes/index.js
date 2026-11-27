@@ -9,11 +9,16 @@ import reservationRoutes from "./reservation.routes.js";
 import contactRoutes from "./contact.routes.js";
 import paymentRoutes from "./payment.routes.js";
 import adminRoutes from "./admin.routes.js";
+import telemetryRoutes from "./telemetry.routes.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 
 const router = Router();
 
 const DB_STATES = ["disconnected", "connected", "connecting", "disconnecting"];
+
+// Render exports the commit it built; exposing the short form here is what lets
+// a deploy be verified from outside instead of guessed from a restart time.
+const BUILD_COMMIT = (process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || "").slice(0, 7) || null;
 
 router.get("/health", (req, res) => {
   const state = DB_STATES[mongoose.connection.readyState] || "unknown";
@@ -21,6 +26,7 @@ router.get("/health", (req, res) => {
   const data = {
     status: healthy ? "ok" : "degraded",
     database: state,
+    commit: BUILD_COMMIT,
     uptimeSeconds: Math.round(process.uptime()),
     timestamp: new Date().toISOString(),
   };
@@ -45,5 +51,6 @@ router.use("/reservations", reservationRoutes);
 router.use("/contact", contactRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/admin", adminRoutes);
+router.use("/client-errors", telemetryRoutes);
 
 export default router;

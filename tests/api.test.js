@@ -177,6 +177,16 @@ describe("infrastructure", () => {
     assert.equal(response.body.data.database, "connected");
   });
 
+  // Verification depends on knowing which build answers, so the field must be
+  // present even where the host exports no commit (null here, a sha on Render).
+  it("names the build it was started from", async () => {
+    const response = await api.get("/api/health");
+
+    assert.equal(response.status, 200);
+    assert.ok("commit" in response.body.data);
+    assert.ok(response.body.data.commit === null || /^[0-9a-f]{7}$/.test(response.body.data.commit));
+  });
+
   it("returns a consistent 404 envelope", async () => {
     const response = await api.get("/api/nope");
     assert.equal(response.status, 404);
@@ -193,6 +203,23 @@ describe("infrastructure", () => {
       .send('{"email": ');
     assert.equal(response.status, 400);
     assert.equal(response.body.error.code, "BAD_REQUEST");
+  });
+
+  it("accepts an anonymous browser error report", async () => {
+    const response = await api.post("/api/client-errors").send({
+      message: "Cannot read properties of undefined (reading 'length')",
+      stack: "TypeError: Cannot read properties of undefined\n    at Menu",
+      route: "/#menu",
+      source: "storefront",
+    });
+    assert.equal(response.status, 202);
+    assert.equal(response.body.success, true);
+  });
+
+  it("rejects an empty browser error report", async () => {
+    const response = await api.post("/api/client-errors").send({ message: "" });
+    assert.equal(response.status, 422);
+    assert.equal(response.body.error.code, "VALIDATION_ERROR");
   });
 });
 
